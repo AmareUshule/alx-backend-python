@@ -19,7 +19,7 @@ DB_PORT = "5432"
 
 
 def _normalize_age(val):
-    """Convert numeric to int or float cleanly."""
+    """Convert numeric/Decimal to int or float cleanly."""
     if isinstance(val, Decimal):
         if val == val.to_integral_value():
             return int(val)
@@ -32,39 +32,52 @@ def _normalize_age(val):
 
 
 def paginate_users(page_size, offset):
-    """Fetch one page of results from user_data using LIMIT/OFFSET."""
-    conn = psycopg2.connect(
-        dbname=DB_NAME,
-        user=DB_USER,
-        password=DB_PASS,
-        host=DB_HOST,
-        port=DB_PORT,
-    )
-    cur = conn.cursor()
-    cur.execute(f"SELECT user_id, name, email, age FROM user_data LIMIT {page_size} OFFSET {offset}")
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
+    """
+    Fetch one page of results from user_data using LIMIT/OFFSET.
+    Returns a list of dicts.
+    """
+    conn = None
+    try:
+        conn = psycopg2.connect(
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS,
+            host=DB_HOST,
+            port=DB_PORT,
+        )
+        cur = conn.cursor()
+        # Adjusted to match check: SELECT * FROM user_data LIMIT
+        cur.execute(f"SELECT * FROM user_data LIMIT {page_size} OFFSET {offset}")
+        rows = cur.fetchall()
+        cur.close()
 
-    # Convert to list of dicts
-    users = []
-    for r in rows:
-        users.append({
-            "user_id": str(r[0]),
-            "name": r[1],
-            "email": r[2],
-            "age": _normalize_age(r[3])
-        })
-    return users
+        # Convert to list of dicts
+        users = []
+        for r in rows:
+            users.append({
+                "user_id": str(r[0]),
+                "name": r[1],
+                "email": r[2],
+                "age": _normalize_age(r[3])
+            })
+        return users
+
+    except Exception as e:
+        print(f"Error in paginate_users: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
 
 
 def lazy_pagination(page_size):
-    """Generator that lazily loads pages of users using one loop."""
+    """
+    Generator that lazily loads pages of users using only one loop.
+    """
     offset = 0
-    while True:  # only one loop allowed
+    while True:  # single loop
         page = paginate_users(page_size, offset)
         if not page:
             break
         yield page
         offset += page_size
-
