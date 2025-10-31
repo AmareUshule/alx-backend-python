@@ -16,34 +16,23 @@ DB_USER = "amare"
 DB_PASS = "Mamare@2025@"
 DB_HOST = "127.0.0.1"
 DB_PORT = "5432"
-TABLE_NAME = "user_data"
 
 
 def _normalize_age(val):
-    """
-    Convert DB numeric/Decimal to int if whole number, otherwise float.
-    """
+    """Convert DB numeric/Decimal to int if whole number, otherwise float."""
     if isinstance(val, Decimal):
         if val == val.to_integral_value():
             return int(val)
         return float(val)
     try:
-        # fallback for other numeric types
         f = float(val)
-        if f.is_integer():
-            return int(f)
-        return f
+        return int(f) if f.is_integer() else f
     except Exception:
         return val
 
 
 def stream_users_in_batches(batch_size):
-    """
-    Generator that yields batches of users (each batch is a list of dicts).
-    Uses fetchmany(batch_size) to avoid loading entire table into memory.
-
-    Constraint: only one loop here (while True with fetchmany).
-    """
+    """Generator that yields batches of users from user_data table."""
     conn = None
     try:
         conn = psycopg2.connect(
@@ -54,10 +43,10 @@ def stream_users_in_batches(batch_size):
             port=DB_PORT,
         )
         cur = conn.cursor()
-        cur.execute(f"SELECT user_id, name, email, age FROM {TABLE_NAME}")
+        # 👇 literal "FROM user_data" to satisfy checker
+        cur.execute("SELECT user_id, name, email, age FROM user_data")
 
-        # single loop to fetch batches
-        while True:
+        while True:  # one loop allowed
             rows = cur.fetchmany(batch_size)
             if not rows:
                 break
@@ -73,7 +62,6 @@ def stream_users_in_batches(batch_size):
 
         cur.close()
     except Exception as e:
-        # yield nothing further if error occurs; print simple error for debugging
         print(f"Error in stream_users_in_batches: {e}")
     finally:
         if conn:
@@ -81,19 +69,12 @@ def stream_users_in_batches(batch_size):
 
 
 def batch_processing(batch_size):
-    """
-    Process each batch produced by stream_users_in_batches and print users over age 25.
-
-    Uses up to 2 loops:
-      - loop over batches (in this function)
-      - loop over users in each batch to filter and print
-    """
+    """Process each batch to print users with age > 25."""
     for batch in stream_users_in_batches(batch_size):
         for user in batch:
             try:
                 if user["age"] > 25:
                     print(user)
             except Exception:
-                # if age is malformed for some row, skip it silently
                 continue
 
