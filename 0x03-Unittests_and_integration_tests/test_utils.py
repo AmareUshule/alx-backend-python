@@ -22,8 +22,11 @@ class TestAccessNestedMap(unittest.TestCase):
         ({"a": {"b": 2}}, ("a", "b"), 2),
     ])
     def test_access_nested_map(self, nested_map, path, expected):
-        """Test that access_nested_map returns the expected value for each input."""
-        self.assertEqual(access_nested_map(nested_map, path), expected)
+        """Test that access_nested_map returns the expected value."""
+        self.assertEqual(
+            access_nested_map(nested_map, path),
+            expected
+        )
 
     @parameterized.expand([
         ({}, ("a",), "a"),
@@ -33,7 +36,10 @@ class TestAccessNestedMap(unittest.TestCase):
         """Test that access_nested_map raises KeyError for missing keys."""
         with self.assertRaises(KeyError) as context:
             access_nested_map(nested_map, path)
-        self.assertEqual(str(context.exception), f"'{missing_key}'")
+        self.assertEqual(
+            str(context.exception),
+            f"'{missing_key}'"
+        )
 
 
 class TestGetJson(unittest.TestCase):
@@ -53,7 +59,10 @@ class TestGetJson(unittest.TestCase):
         result = get_json(test_url)
 
         mock_get.assert_called_once_with(test_url)
-        self.assertEqual(result, test_payload)
+        self.assertEqual(
+            result,
+            test_payload
+        )
 
 
 class TestMemoize(unittest.TestCase):
@@ -72,7 +81,11 @@ class TestMemoize(unittest.TestCase):
 
         test_instance = TestClass()
 
-        with patch.object(TestClass, 'a_method', return_value=42) as mock_method:
+        with patch.object(
+            TestClass,
+            'a_method',
+            return_value=42
+        ) as mock_method:
             result1 = test_instance.a_property
             result2 = test_instance.a_property
 
