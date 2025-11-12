@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Unit tests for client.GithubOrgClient using parameterized and patch decorators.
+Unit tests for client.GithubOrgClient using parameterized, patch decorators,
+and property mocking.
 """
 
 import unittest
@@ -39,6 +40,24 @@ class TestGithubOrgClient(unittest.TestCase):
 
         # Ensure the org property returns the expected payload
         self.assertEqual(result, expected_payload)
+
+    def test_public_repos_url(self):
+        """Test that _public_repos_url returns the correct URL using mocked org."""
+        client = GithubOrgClient("any_org")
+
+        mock_payload = {"repos_url": "https://api.github.com/orgs/any_org/repos"}
+
+        # Patch the 'org' property of the client instance
+        with patch.object(
+            GithubOrgClient,
+            "org",
+            new_callable=property,
+            return_value=mock_payload
+        ):
+            result = client._public_repos_url
+
+        # Assert that the _public_repos_url matches the mocked payload
+        self.assertEqual(result, mock_payload["repos_url"])
 
 
 if __name__ == "__main__":
