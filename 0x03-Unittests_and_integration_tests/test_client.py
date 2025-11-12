@@ -4,6 +4,10 @@ Unit tests for client.GithubOrgClient using parameterized, patch decorators,
 property mocking, and more advanced patching.
 """
 
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 import unittest
 from unittest.mock import patch
 from parameterized import parameterized
@@ -55,6 +59,7 @@ class TestGithubOrgClient(unittest.TestCase):
         """Test that public_repos returns the expected list of repo names."""
 
         client = GithubOrgClient("any_org")
+
         # Payload returned by the mocked get_json
         mocked_repos_payload = [
             {"name": "repo1", "license": {"key": "MIT"}},
@@ -63,12 +68,14 @@ class TestGithubOrgClient(unittest.TestCase):
         ]
         mock_get_json.return_value = mocked_repos_payload
 
-        # Patch the _public_repos_url property
+        # Patch the _public_repos_url property with line split for PEP8
         with patch.object(
             GithubOrgClient,
             "_public_repos_url",
             new_callable=property,
-            return_value="https://api.github.com/orgs/any_org/repos"
+            return_value=(
+                "https://api.github.com/orgs/any_org/repos"
+            )
         ) as mock_url_prop:
             result = client.public_repos()
 
