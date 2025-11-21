@@ -1,10 +1,3 @@
-from rest_framework.routers import DefaultRouter
-from .views import ConversationViewSet, MessageViewSet
-
-router = DefaultRouter()
-router.register(r'conversations', ConversationViewSet, basename='conversation')
-router.register(r'messages', MessageViewSet, basename='message')
-
-urlpatterns = router.urls
-
+# Leave this file empty or with a simple comment
+# This file is required by ALX but all routing will be in messaging_app/urls.py
 
