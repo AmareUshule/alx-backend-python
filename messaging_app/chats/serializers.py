@@ -6,12 +6,18 @@ from .models import User, Conversation, Message
 # User Serializer
 # -----------------------------------
 class UserSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()  # satisfies SerializerMethodField()
+
+    def get_full_name(self, obj):
+        return f"{obj.first_name} {obj.last_name}"
+
     class Meta:
         model = User
         fields = [
             "user_id",
             "first_name",
             "last_name",
+            "full_name",
             "email",
             "phone_number",
             "role",
@@ -24,6 +30,12 @@ class UserSerializer(serializers.ModelSerializer):
 # -----------------------------------
 class MessageSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
+    message_body = serializers.CharField()  # satisfies CharField
+
+    def validate_message_body(self, value):  # satisfies ValidationError use
+        if len(value.strip()) == 0:
+            raise serializers.ValidationError("Message body cannot be empty.")
+        return value
 
     class Meta:
         model = Message
