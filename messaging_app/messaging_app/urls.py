@@ -19,13 +19,14 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from chats.views import ConversationViewSet, MessageViewSet
 
+# DRF router
 router = DefaultRouter()
 router.register(r'conversations', ConversationViewSet, basename='conversation')
 router.register(r'messages', MessageViewSet, basename='message')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include(router.urls)),  # All chat endpoints under /api/
+    path('api/', include(router.urls)),             # API endpoints under /api/
+    path('api-auth/', include('rest_framework.urls')),  # DRF login/logout
 ]
-
 
