@@ -5,12 +5,10 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 class MessageFilter(django_filters.FilterSet):
-    # Filter messages by conversation participant
     sender = django_filters.ModelChoiceFilter(
         field_name='sender',
         queryset=User.objects.all()
     )
-    # Filter messages by date range
     start_date = django_filters.DateTimeFilter(field_name='sent_at', lookup_expr='gte')
     end_date = django_filters.DateTimeFilter(field_name='sent_at', lookup_expr='lte')
 
