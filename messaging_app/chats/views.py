@@ -4,6 +4,9 @@ from rest_framework.permissions import IsAuthenticated
 from .models import User, Conversation, Message
 from .serializers import UserSerializer, ConversationSerializer, MessageSerializer
 from .permissions import IsParticipantOfConversation
+from django_filters.rest_framework import DjangoFilterBackend
+from .filters import MessageFilter
+from .pagination import MessagePagination
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
@@ -33,15 +36,15 @@ class ConversationViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(conversation)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-
 class MessageViewSet(viewsets.ModelViewSet):
     serializer_class = MessageSerializer
     permission_classes = [IsAuthenticated, IsParticipantOfConversation]
-    filter_backends = [filters.SearchFilter]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_class = MessageFilter
+    pagination_class = MessagePagination
     search_fields = ['message_body', 'sender__first_name', 'sender__last_name', 'sender__email']
 
     def get_queryset(self):
-        # Show only messages in conversations the user is a participant
         return Message.objects.filter(
             conversation__participants=self.request.user
         ).order_by('-sent_at')
@@ -56,20 +59,17 @@ class MessageViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Check conversation
         try:
             conversation = Conversation.objects.get(conversation_id=conversation_id)
         except Conversation.DoesNotExist:
             return Response({"error": "Conversation not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Check if user is a participant
         if request.user not in conversation.participants.all():
             return Response(
                 {"error": "You are not a participant of this conversation."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # Create message with authenticated user as sender
         message = Message.objects.create(
             conversation=conversation,
             sender=request.user,
