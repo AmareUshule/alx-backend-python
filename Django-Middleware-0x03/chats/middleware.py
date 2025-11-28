@@ -67,37 +67,6 @@ class RestrictAccessByTimeMiddleware:
         # Process the request normally if not restricted
         response = self.get_response(request)
         return response
-
-
-class RolePermissionMiddleware:
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        # Define admin/moderator actions that require special permissions
-        admin_actions = ['delete', 'edit', 'moderate', 'ban', 'create_room']
-        moderator_actions = ['delete', 'edit', 'moderate']
-        
-        # Check if the request is for a protected action
-        is_protected_action = any(action in request.path.lower() for action in admin_actions)
-        
-        # If it's a protected action, check user role
-        if is_protected_action and request.user.is_authenticated:
-            # Get user role (assuming user model has a 'role' field)
-            user_role = getattr(request.user, 'role', 'user').lower()
-            
-            # Check if user has required permissions
-            if user_role not in ['admin', 'moderator']:
-                return HttpResponseForbidden(
-                    "You don't have permission to perform this action. "
-                    "Admin or Moderator role required."
-                )
-        
-        # Process the request normally if user has permission or action doesn't require it
-        response = self.get_response(request)
-        return response
-
-
 class OffensiveLanguageMiddleware:
     """
     Middleware to limit chat messages per IP address.
@@ -154,3 +123,34 @@ class OffensiveLanguageMiddleware:
         else:
             ip = request.META.get('REMOTE_ADDR', '')
         return ip
+
+class RolePermissionMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # Define admin/moderator actions that require special permissions
+        admin_actions = ['delete', 'edit', 'moderate', 'ban', 'create_room']
+        moderator_actions = ['delete', 'edit', 'moderate']
+        
+        # Check if the request is for a protected action
+        is_protected_action = any(action in request.path.lower() for action in admin_actions)
+        
+        # If it's a protected action, check user role
+        if is_protected_action and request.user.is_authenticated:
+            # Get user role (assuming user model has a 'role' field)
+            user_role = getattr(request.user, 'role', 'user').lower()
+            
+            # Check if user has required permissions
+            if user_role not in ['admin', 'moderator']:
+                return HttpResponseForbidden(
+                    "You don't have permission to perform this action. "
+                    "Admin or Moderator role required."
+                )
+        
+        # Process the request normally if user has permission or action doesn't require it
+        response = self.get_response(request)
+        return response
+
+
+
