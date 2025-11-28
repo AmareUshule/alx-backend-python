@@ -61,9 +61,11 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # Your custom middlewares
-    'chats.middleware.RequestLoggingMiddleware',        # Logging middleware first
-    'chats.middleware.RestrictAccessByTimeMiddleware',  # Time restriction middleware second
+    # Your custom middlewares (order matters!)
+    'chats.middleware.RequestLoggingMiddleware',        # 1. Logging first
+    'chats.middleware.RestrictAccessByTimeMiddleware',  # 2. Time restriction
+    'chats.middleware.RolePermissionMiddleware',        # 3. Role permissions
+    'chats.middleware.OffensiveLanguageMiddleware',     # 4. Rate limiting last  
 ]
 
 
