@@ -10,10 +10,22 @@ class Message(models.Model):
     )
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
-    edited = models.BooleanField(default=False)  # Track if message has been edited
+    edited = models.BooleanField(default=False)
+    parent_message = models.ForeignKey(
+        "self", null=True, blank=True, related_name="replies", on_delete=models.CASCADE
+    )
 
     def __str__(self):
         return f"From {self.sender} to {self.receiver}"
+
+    def get_thread(self):
+        """
+        Recursive function to get all replies to this message in a threaded structure.
+        """
+        return {
+            "message": self,
+            "replies": [reply.get_thread() for reply in self.replies.all().order_by("timestamp")]
+        }
 
 
 class Notification(models.Model):
