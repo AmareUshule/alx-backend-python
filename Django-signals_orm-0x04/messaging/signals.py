@@ -27,4 +27,15 @@ def log_message_edit(sender, instance, **kwargs):
             edited_by=editor
         )
         instance.edited = True
-
+# ✅ New signal: Clean up user data
+@receiver(post_delete, sender=User)
+def delete_user_related_data(sender, instance, **kwargs):
+    # Delete messages sent or received by this user
+    Message.objects.filter(sender=instance).delete()
+    Message.objects.filter(receiver=instance).delete()
+    
+    # Delete notifications for this user
+    Notification.objects.filter(user=instance).delete()
+    
+    # Delete message histories where the user was the editor
+    MessageHistory.objects.filter(edited_by=instance).delete()
