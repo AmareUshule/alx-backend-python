@@ -1,23 +1,22 @@
-# Base Python image
+# Use python:3.10 as base image
 FROM python:3.10
 
 # Prevent Python from writing pyc files
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Set the working directory
+# Set work directory
 WORKDIR /app
 
-# Install project dependencies
-COPY requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy and install requirements
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
-# Copy the rest of the project code
-COPY . /app/
+# Copy project
+COPY . .
 
-# Expose Django default port
+# Expose port 8000
 EXPOSE 8000
 
-# Start the Django development server
+# Start server
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
-
