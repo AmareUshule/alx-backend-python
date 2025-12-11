@@ -1,0 +1,31 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Docker
+docker-compose.override.yml
+
+# Database
+*.db
+*.sqlite3
+mysql_data/
+
+# Django
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.log
+local_settings.py
+db.sqlite3
+media/
+static/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
