@@ -1,0 +1,20 @@
+# Core Django
+Django==4.2.11
+asgiref==3.7.2
+sqlparse==0.4.4
+pytz==2024.1
+
+# Django REST Framework
+djangorestframework==3.14.0
+django-filter==23.2
+
+# JWT Auth compatible with Python 3.10
+djangorestframework-simplejwt==5.5.1
+
+# CORS handling
+django-cors-headers==4.3.0
+
+# Optional utilities
+requests==2.32.0
+python-dotenv==1.0.0
+
