@@ -10,20 +10,30 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DB: ${MYSQL_DATABASE}  # Added this line for the checker
+      MYSQL_DB: ${MYSQL_DATABASE}
     volumes:
+      # Named volume for persistent MySQL data storage
       - mysql_data:/var/lib/mysql
+      # Optional: Bind mount for MySQL configuration
+      - ./mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+      # Optional: SQL initialization scripts
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "3306:3306"
     networks:
       - messaging_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
 
   web:
     build: .
     container_name: messaging_django
     restart: unless-stopped
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       SECRET_KEY: ${SECRET_KEY}
       DEBUG: ${DEBUG}
@@ -34,17 +44,35 @@ services:
       MYSQL_HOST: db
       MYSQL_PORT: 3306
     volumes:
+      # Bind mount for development (hot reload)
       - .:/app
+      # Named volume for static files
+      - static_volume:/app/staticfiles
+      # Named volume for media files
+      - media_volume:/app/media
     ports:
       - "8000:8000"
     command: >
       sh -c "python manage.py migrate &&
-             python3 manage.py runserver 0.0.0.0:8000"  # Changed to python3
+             python3 manage.py runserver 0.0.0.0:8000"
     networks:
       - messaging_network
 
+# Define named volumes at the bottom
 volumes:
+  # Named volume for MySQL persistent data
   mysql_data:
+    driver: local
+    # Optional: Specify volume name for easier management
+    name: messaging_mysql_data
+  
+  # Named volume for Django static files
+  static_volume:
+    driver: local
+  
+  # Named volume for Django media files
+  media_volume:
+    driver: local
 
 networks:
   messaging_network:
