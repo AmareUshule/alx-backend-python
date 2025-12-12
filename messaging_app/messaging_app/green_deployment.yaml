@@ -1,0 +1,61 @@
+# Green Deployment - New version to test
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-messaging-green
+  labels:
+    app: django-messaging
+    version: green
+    track: canary
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: django-messaging
+      version: green
+  template:
+    metadata:
+      labels:
+        app: django-messaging
+        version: green
+        track: canary
+    spec:
+      containers:
+      - name: django-app
+        image: your-dockerhub-username/django-messaging-app:v2.0  # Green version
+        ports:
+        - containerPort: 8000
+        env:
+        - name: VERSION
+          value: "green-v2.0"
+        - name: APP_COLOR
+          value: "green"
+        readinessProbe:
+          httpGet:
+            path: /health/
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health/
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+# Green Service (optional - for direct access to green)
+apiVersion: v1
+kind: Service
+metadata:
+  name: django-messaging-green-service
+  labels:
+    app: django-messaging
+    version: green
+spec:
+  type: ClusterIP
+  selector:
+    app: django-messaging
+    version: green
+  ports:
+  - port: 8000
+    targetPort: 8000

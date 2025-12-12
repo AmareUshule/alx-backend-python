@@ -1,0 +1,61 @@
+# Blue Deployment - Current stable version
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-messaging-blue
+  labels:
+    app: django-messaging
+    version: blue
+    track: stable
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: django-messaging
+      version: blue
+  template:
+    metadata:
+      labels:
+        app: django-messaging
+        version: blue
+        track: stable
+    spec:
+      containers:
+      - name: django-app
+        image: your-dockerhub-username/django-messaging-app:v1.0  # Blue version
+        ports:
+        - containerPort: 8000
+        env:
+        - name: VERSION
+          value: "blue-v1.0"
+        - name: APP_COLOR
+          value: "blue"
+        readinessProbe:
+          httpGet:
+            path: /health/
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health/
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+# Blue Service (optional - for direct access to blue)
+apiVersion: v1
+kind: Service
+metadata:
+  name: django-messaging-blue-service
+  labels:
+    app: django-messaging
+    version: blue
+spec:
+  type: ClusterIP
+  selector:
+    app: django-messaging
+    version: blue
+  ports:
+  - port: 8000
+    targetPort: 8000

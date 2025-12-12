@@ -1,0 +1,32 @@
+# Main Service - Switches traffic between blue and green
+apiVersion: v1
+kind: Service
+metadata:
+  name: django-messaging-service
+  labels:
+    app: django-messaging
+spec:
+  type: ClusterIP
+  # Initially points to blue deployment
+  selector:
+    app: django-messaging
+    version: blue  # Start with blue
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+---
+# LoadBalancer for external access (optional)
+apiVersion: v1
+kind: Service
+metadata:
+  name: django-messaging-lb
+  labels:
+    app: django-messaging
+spec:
+  type: LoadBalancer
+  selector:
+    app: django-messaging  # Will use main service's selector
+  ports:
+  - port: 80
+    targetPort: 8000
