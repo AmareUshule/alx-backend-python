@@ -1,0 +1,56 @@
+# Blue Deployment with updated image version
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-messaging-deployment
+  labels:
+    app: django-messaging
+spec:
+  replicas: 3
+  # Rolling update strategy
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # Can create 1 extra pod during update
+      maxUnavailable: 0  # No pods unavailable during update
+  selector:
+    matchLabels:
+      app: django-messaging
+  template:
+    metadata:
+      labels:
+        app: django-messaging
+    spec:
+      containers:
+      - name: django-app
+        image: your-dockerhub-username/django-messaging-app:2.0  # Updated to version 2.0
+        ports:
+        - containerPort: 8000
+        env:
+        - name: VERSION
+          value: "2.0"
+        # Health checks for rolling updates
+        readinessProbe:
+          httpGet:
+            path: /health/
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health/
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: django-messaging-service
+spec:
+  type: ClusterIP
+  selector:
+    app: django-messaging
+  ports:
+  - port: 8000
+    targetPort: 8000
