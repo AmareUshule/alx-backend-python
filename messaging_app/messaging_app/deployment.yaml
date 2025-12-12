@@ -1,0 +1,42 @@
+# messaging_app/deployment-minimal.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-messaging-deployment
+  labels:
+    app: django-messaging
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: django-messaging
+  template:
+    metadata:
+      labels:
+        app: django-messaging
+    spec:
+      containers:
+      - name: django-app
+        image: your-dockerhub-username/django-messaging-app:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DJANGO_SECRET_KEY
+          value: "django-insecure-change-this-in-production"
+        - name: DEBUG
+          value: "False"
+        - name: ALLOWED_HOSTS
+          value: "*"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: django-messaging-service
+spec:
+  type: ClusterIP
+  selector:
+    app: django-messaging
+  ports:
+  - port: 8000
+    targetPort: 8000
