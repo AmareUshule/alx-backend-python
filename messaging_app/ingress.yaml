@@ -1,0 +1,239 @@
+---
+# Django Messaging App - Kubernetes Ingress Configuration
+# Author: ALX Backend Python
+# Description: Nginx Ingress configuration for external access to Django app
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: django-messaging-ingress
+  namespace: default
+  annotations:
+    # Nginx Ingress Controller annotations
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"  # Set to true if using HTTPS
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"  # Increase if uploading large files
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+    nginx.ingress.kubernetes.io/client-body-buffer-size: "10m"
+    
+    # CORS configuration for Django REST API
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"  # Configure for specific domains in production
+    
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-connections: "10"
+    nginx.ingress.kubernetes.io/limit-rps: "10"
+    
+    # Django specific settings
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header X-Forwarded-Proto $scheme;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header Host $http_host;
+    
+  labels:
+    app: django-messaging
+    tier: ingress
+    component: nginx-ingress
+spec:
+  # Ingress rules for different paths and domains
+  rules:
+  # Rule 1: Main application - accessible via domain or IP
+  - host: django-messaging.local  # Change to your domain in production
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: django-messaging-service
+            port:
+              number: 8000
+  
+  # Rule 2: API endpoints - separated path
+  - host: api.django-messaging.local  # API subdomain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: django-messaging-service
+            port:
+              number: 8000
+  
+  # Rule 3: Admin interface - separate path
+  - host: admin.django-messaging.local  # Admin subdomain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: django-messaging-service
+            port:
+              number: 8000
+  
+  # Default rule (if no host specified)
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: django-messaging-service
+            port:
+              number: 8000
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: django-messaging-service
+            port:
+              number: 8000
+      - path: /admin
+        pathType: Prefix
+        backend:
+          service:
+            name: django-messaging-service
+            port:
+              number: 8000
+      - path: /static
+        pathType: Prefix
+        backend:
+          service:
+            name: django-messaging-service
+            port:
+              number: 8000
+      - path: /media
+        pathType: Prefix
+        backend:
+          service:
+            name: django-messaging-service
+            port:
+              number: 8000
+
+---
+# Alternative: Ingress with multiple path routing on same host
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: django-messaging-ingress-paths
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+  labels:
+    app: django-messaging
+    tier: ingress
+spec:
+  rules:
+  - host: messaging-app.example.com  # Your domain here
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: django-messaging-service
+            port:
+              number: 8000
+      - path: /api/?(.*)  # API endpoints
+        pathType: Prefix
+        backend:
+          service:
+            name: django-messaging-service
+            port:
+              number: 8000
+      - path: /admin/?(.*)  # Django admin
+        pathType: Prefix
+        backend:
+          service:
+            name: django-messaging-service
+            port:
+              number: 8000
+      - path: /static/?(.*)  # Static files
+        pathType: Prefix
+        backend:
+          service:
+            name: django-messaging-service
+            port:
+              number: 8000
+      - path: /media/?(.*)  # Media files
+        pathType: Prefix
+        backend:
+            name: django-messaging-service
+            port:
+              number: 8000
+      - path: /ws/?(.*)  # WebSocket for real-time messaging
+        pathType: Prefix
+        backend:
+          service:
+            name: django-messaging-service
+            port:
+              number: 8000
+
+---
+# Optional: TLS/SSL Configuration (for HTTPS)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: django-messaging-ingress-tls
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"  # If using cert-manager
+  labels:
+    app: django-messaging
+    tier: ingress
+spec:
+  tls:
+  - hosts:
+    - django-messaging.example.com
+    - api.django-messaging.example.com
+    - admin.django-messaging.example.com
+    secretName: django-messaging-tls  # TLS secret
+  rules:
+  - host: django-messaging.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: django-messaging-service
+            port:
+              number: 8000
+  - host: api.django-messaging.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: django-messaging-service
+            port:
+              number: 8000
+  - host: admin.django-messaging.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: django-messaging-service
+            port:
+              number: 8000

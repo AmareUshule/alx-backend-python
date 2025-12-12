@@ -1,0 +1,219 @@
+# ============================================
+# Kubernetes Ingress Setup Commands
+# Django Messaging App - External Access
+# ============================================
+
+# 1. INSTALL NGINX INGRESS CONTROLLER
+
+# For Minikube users:
+minikube addons enable ingress
+
+# Verify installation:
+kubectl get pods -n ingress-nginx
+kubectl get services -n ingress-nginx
+
+# For other Kubernetes clusters (generic installation):
+# Using Helm (recommended):
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+helm install ingress-nginx ingress-nginx/ingress-nginx --create-namespace --namespace ingress-nginx
+
+# OR using kubectl (official manifests):
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
+
+# For Docker Desktop:
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
+
+# For MicroK8s:
+microk8s enable ingress
+
+# For K3s:
+# Ingress is already installed by default
+
+# ============================================
+
+# 2. VERIFY INGRESS CONTROLLER IS RUNNING
+
+# Check ingress controller pods
+kubectl get pods --namespace=ingress-nginx
+
+# Check ingress controller service (Note the external IP/port)
+kubectl get services --namespace=ingress-nginx
+
+# Check ingress class
+kubectl get ingressclass
+
+# ============================================
+
+# 3. GET INGRESS CONTROLLER EXTERNAL IP
+
+# For Minikube:
+minikube ip
+# The IP will be used to access your app
+
+# For cloud providers, get the external IP:
+kubectl get services -n ingress-nginx ingress-nginx-controller --output jsonpath='{.status.loadBalancer.ingress[0].ip}'
+
+# For Docker Desktop/Local clusters, you might use localhost or 127.0.0.1
+
+# ============================================
+
+# 4. UPDATE HOSTS FILE (For local development)
+
+# On Linux/Mac:
+sudo nano /etc/hosts
+# Add this line (using your minikube IP or appropriate IP):
+# <MINIKUBE_IP> django-messaging.local api.django-messaging.local admin.django-messaging.local
+
+# Example with Minikube IP:
+# 192.168.49.2 django-messaging.local api.django-messaging.local admin.django-messaging.local
+
+# On Windows:
+# Edit C:\Windows\System32\drivers\etc\hosts as Administrator
+# Add the same line
+
+# ============================================
+
+# 5. APPLY THE INGRESS CONFIGURATION
+
+# Apply the ingress.yaml file
+kubectl apply -f ingress.yaml
+
+# Or apply specific ingress configuration:
+kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: django-messaging-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  rules:
+  - host: django-messaging.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: django-messaging-service
+            port:
+              number: 8000
+EOF
+
+# ============================================
+
+# 6. VERIFY INGRESS CONFIGURATION
+
+# Check ingress resource
+kubectl get ingress
+
+# Get detailed ingress information
+kubectl describe ingress django-messaging-ingress
+
+# Check ingress events
+kubectl get events --field-selector involvedObject.name=django-messaging-ingress
+
+# ============================================
+
+# 7. TEST THE INGRESS
+
+# Test using curl (adjust host according to your setup)
+curl -H "Host: django-messaging.local" http://<INGRESS_IP>/
+curl -H "Host: api.django-messaging.local" http://<INGRESS_IP>/api/
+curl -H "Host: admin.django-messaging.local" http://<INGRESS_IP>/admin/
+
+# Or if you added hosts entry, simply use:
+curl http://django-messaging.local/
+curl http://api.django-messaging.local/api/
+curl http://admin.django-messaging.local/admin/
+
+# Test all paths
+curl -I http://django-messaging.local/health/
+curl http://django-messaging.local/api/messages/
+curl http://django-messaging.local/admin/login/
+
+# ============================================
+
+# 8. TROUBLESHOOTING COMMANDS
+
+# Check nginx controller logs
+kubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx
+
+# Check nginx configuration
+kubectl exec -n ingress-nginx -it <ingress-controller-pod> -- nginx -T
+
+# Check backend services
+kubectl get endpoints django-messaging-service
+
+# Check if services are reachable
+kubectl port-forward service/django-messaging-service 8000:8000 &
+curl http://localhost:8000/health/
+
+# Check DNS resolution in the cluster
+kubectl run -it --rm --image=busybox:1.28 dns-test -- nslookup django-messaging-service.default.svc.cluster.local
+
+# ============================================
+
+# 9. UPDATE DJANGO SETTINGS FOR INGRESS
+
+# If using Django, update ALLOWED_HOSTS in your ConfigMap/Secret:
+kubectl edit configmap django-messaging-config
+# Add: django-messaging.local, api.django-messaging.local, admin.django-messaging.local
+
+# Or patch the configmap:
+kubectl patch configmap django-messaging-config --type='json' -p='[{"op": "replace", "path": "/data/ALLOWED_HOSTS", "value": "django-messaging.local,api.django-messaging.local,admin.django-messaging.local,localhost,127.0.0.1"}]'
+
+# ============================================
+
+# 10. SCALE AND MONITOR
+
+# Watch ingress changes
+kubectl get ingress -w
+
+# Watch nginx controller logs
+kubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx -f
+
+# Check request metrics (if metrics are enabled)
+kubectl get --raw /apis/metrics.k8s.io/v1beta1/namespaces/default/pods
+
+# ============================================
+
+# 11. CLEANUP COMMANDS
+
+# Delete specific ingress
+kubectl delete ingress django-messaging-ingress
+
+# Delete all ingresses
+kubectl delete ingress --all
+
+# Disable ingress in Minikube
+minikube addons disable ingress
+
+# Uninstall nginx ingress controller
+helm uninstall ingress-nginx -n ingress-nginx
+# OR
+kubectl delete -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
+
+# ============================================
+
+# 12. COMMAND TO APPLY INGRESS CONFIGURATION (PRIMARY TASK)
+# This is the main command required by the task:
+
+kubectl apply -f ingress.yaml
+
+# ============================================
+
+# Additional useful commands for Ingress management:
+
+# Export ingress configuration
+kubectl get ingress django-messaging-ingress -o yaml > ingress-export.yaml
+
+# Patch ingress to add new host
+kubectl patch ingress django-messaging-ingress --type='json' -p='[{"op": "add", "path": "/spec/rules/-", "value": {"host": "new.example.com", "http": {"paths": [{"path": "/", "pathType": "Prefix", "backend": {"service": {"name": "django-messaging-service", "port": {"number": 8000}}}}]}}}]'
+
+# Check ingress backend health
+kubectl describe ingress django-messaging-ingress | grep -A 10 "Backends"
+
+# Get ingress controller IP/Port
+kubectl get service ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}:{.spec.ports[0].port}'
