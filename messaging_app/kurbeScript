@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Simplified kurbeScript for Kubernetes cluster setup
+
+echo "Starting Kubernetes cluster setup..."
+
+# Check if minikube is installed
+if ! command -v minikube &> /dev/null; then
+    echo "Minikube not found. Please install minikube first."
+    echo "Visit: https://minikube.sigs.k8s.io/docs/start/"
+    exit 1
+fi
+
+# Check if kubectl is installed
+if ! command -v kubectl &> /dev/null; then
+    echo "kubectl not found. Please install kubectl."
+    echo "Visit: https://kubernetes.io/docs/tasks/tools/"
+    exit 1
+fi
+
+# Start or restart minikube cluster
+echo "Starting Minikube cluster..."
+minikube start
+
+# Verify cluster is running
+echo "Verifying cluster status..."
+kubectl cluster-info
+
+# Get all pods
+echo "Retrieving all pods..."
+kubectl get pods -A
+
+echo "Setup completed!"
