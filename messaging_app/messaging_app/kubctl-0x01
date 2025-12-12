@@ -1,0 +1,56 @@
+#!/bin/bash
+# messaging_app/kubctl-0x01-simple.sh
+
+# Simple scaling and load testing script
+
+echo "Starting scaling and load testing..."
+
+# Configuration
+DEPLOYMENT="django-messaging-deployment"
+REPLICAS=3
+
+# Step 1: Scale the deployment
+echo "1. Scaling deployment to $REPLICAS replicas..."
+kubectl scale deployment $DEPLOYMENT --replicas=$REPLICAS
+
+# Step 2: Verify pods are running
+echo "2. Checking pods..."
+sleep 5
+kubectl get pods -l app=django-messaging
+
+# Step 3: Port forward for load testing
+echo "3. Setting up port forwarding..."
+kubectl port-forward service/django-messaging-service 8000:8000 &
+PORT_PID=$!
+sleep 3
+
+# Step 4: Install wrk if needed and run load test
+echo "4. Running load test..."
+if ! command -v wrk &> /dev/null; then
+    echo "Installing wrk..."
+    # Try different package managers
+    if command -v apt-get &> /dev/null; then
+        sudo apt-get update && sudo apt-get install -y wrk
+    elif command -v brew &> /dev/null; then
+        brew install wrk
+    else
+        echo "Please install wrk manually"
+    fi
+fi
+
+# Run load test
+echo "Running wrk load test..."
+wrk -t2 -c10 -d30s http://localhost:8000
+
+# Step 5: Monitor resources
+echo "5. Monitoring resource usage..."
+echo "Checking if metrics-server is available..."
+kubectl top pods 2>/dev/null || echo "Metrics server not available"
+
+echo "Pod details:"
+kubectl get pods -l app=django-messaging -o wide
+
+# Cleanup
+kill $PORT_PID 2>/dev/null || true
+
+echo "Script completed!"
