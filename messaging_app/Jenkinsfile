@@ -1,36 +1,92 @@
 pipeline {
     agent any
-
+    
+    tools {
+        // If you have Python installed via Jenkins tools
+        python 'Python3'
+    }
+    
+    environment {
+        // Set any environment variables if needed
+        PYTHONPATH = "${WORKSPACE}"
+    }
+    
     stages {
-
         stage('Checkout') {
             steps {
-                git credentialsId: 'github-creds',
-                    url: 'https://github.com/alx-backend-python/alx-backend-python.git'
+                // Checkout code from GitHub
+                git branch: 'main', 
+                    credentialsId: 'github-creds', // You'll need to set this up in Jenkins
+                    url: 'https://github.com/AmareUshule/alx-backend-python.git'
+                
+                // Navigate to messaging_app directory
+                dir('messaging_app') {
+                    sh 'pwd'
+                    sh 'ls -la'
+                }
             }
         }
-
+        
         stage('Install Dependencies') {
             steps {
-                sh 'pip install -r messaging_app/requirements.txt'
+                dir('messaging_app') {
+                    // Install Python dependencies
+                    sh 'pip install -r requirements.txt || pip install pytest pytest-cov || true'
+                }
             }
         }
-
+        
         stage('Run Tests') {
             steps {
-                sh 'pytest messaging_app/ --junitxml=test-results.xml'
+                dir('messaging_app') {
+                    // Run pytest with coverage
+                    sh 'python -m pytest tests/ -v --junitxml=test-results.xml --cov=. --cov-report=xml:coverage.xml'
+                }
+            }
+            post {
+                always {
+                    // Archive test results
+                    junit 'messaging_app/test-results.xml'
+                    
+                    // Archive coverage report if exists
+                    script {
+                        if (fileExists('messaging_app/coverage.xml')) {
+                            publishCoverage adapters: [coberturaAdapter('messaging_app/coverage.xml')]
+                        }
+                    }
+                }
             }
         }
-
-        stage('Archive Test Results') {
+        
+        stage('Generate Report') {
             steps {
-                junit 'test-results.xml'
+                dir('messaging_app') {
+                    // Generate any additional reports if needed
+                    sh 'echo "Test execution completed at $(date)" > test_report.txt'
+                }
+            }
+            post {
+                always {
+                    // Archive artifacts
+                    archiveArtifacts artifacts: 'messaging_app/test_report.txt', fingerprint: true
+                    
+                    // Clean workspace (optional)
+                    cleanWs()
+                }
             }
         }
     }
-
-    triggers {
-        // Manual trigger, so no SCM or schedule triggers here
+    
+    post {
+        always {
+            // Send notifications or perform cleanup
+            echo 'Pipeline completed'
+        }
+        success {
+            echo 'Pipeline succeeded!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
     }
 }
-
