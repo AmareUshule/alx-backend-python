@@ -1,92 +1,59 @@
 pipeline {
     agent any
     
-    tools {
-        // If you have Python installed via Jenkins tools
-        python 'Python3'
-    }
-    
     environment {
-        // Set any environment variables if needed
-        PYTHONPATH = "${WORKSPACE}"
+        DOCKER_USER = credentials('dockerhub-username')
+        DOCKER_PASS = credentials('dockerhub-password')
+        IMAGE_NAME = 'your-dockerhub-username/messaging-app'
     }
     
     stages {
-        stage('Checkout') {
+        stage('Git Checkout') {
             steps {
-                // Checkout code from GitHub
-                git branch: 'main', 
-                    credentialsId: 'github-creds', // You'll need to set this up in Jenkins
-                    url: 'https://github.com/AmareUshule/alx-backend-python.git'
-                
-                // Navigate to messaging_app directory
-                dir('messaging_app') {
-                    sh 'pwd'
-                    sh 'ls -la'
-                }
+                git credentialsId: 'github-credentials', 
+                    url: 'https://github.com/your-username/alx-backend-python.git',
+                    branch: 'main'
             }
         }
         
-        stage('Install Dependencies') {
+        stage('Install & Test') {
             steps {
                 dir('messaging_app') {
-                    // Install Python dependencies
-                    sh 'pip install -r requirements.txt || pip install pytest pytest-cov || true'
-                }
-            }
-        }
-        
-        stage('Run Tests') {
-            steps {
-                dir('messaging_app') {
-                    // Run pytest with coverage
-                    sh 'python -m pytest tests/ -v --junitxml=test-results.xml --cov=. --cov-report=xml:coverage.xml'
+                    sh 'pip install -r requirements.txt'
+                    sh 'python -m pytest tests/ --junitxml=results.xml'
                 }
             }
             post {
                 always {
-                    // Archive test results
-                    junit 'messaging_app/test-results.xml'
-                    
-                    // Archive coverage report if exists
-                    script {
-                        if (fileExists('messaging_app/coverage.xml')) {
-                            publishCoverage adapters: [coberturaAdapter('messaging_app/coverage.xml')]
-                        }
-                    }
+                    junit 'messaging_app/results.xml'
                 }
             }
         }
         
-        stage('Generate Report') {
+        stage('Build Image') {
             steps {
                 dir('messaging_app') {
-                    // Generate any additional reports if needed
-                    sh 'echo "Test execution completed at $(date)" > test_report.txt'
+                    sh 'docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} .'
+                    sh 'docker tag ${IMAGE_NAME}:${BUILD_NUMBER} ${IMAGE_NAME}:latest'
                 }
             }
-            post {
-                always {
-                    // Archive artifacts
-                    archiveArtifacts artifacts: 'messaging_app/test_report.txt', fingerprint: true
-                    
-                    // Clean workspace (optional)
-                    cleanWs()
-                }
+        }
+        
+        stage('Push Image') {
+            steps {
+                sh '''
+                    echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin
+                    docker push ${IMAGE_NAME}:${BUILD_NUMBER}
+                    docker push ${IMAGE_NAME}:latest
+                    docker logout
+                '''
             }
         }
     }
     
     post {
-        always {
-            // Send notifications or perform cleanup
-            echo 'Pipeline completed'
-        }
         success {
-            echo 'Pipeline succeeded!'
-        }
-        failure {
-            echo 'Pipeline failed!'
+            echo 'Docker image built and pushed successfully!'
         }
     }
 }
